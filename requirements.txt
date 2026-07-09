@@ -1,0 +1,10 @@
+groq
+chromadb
+sentence-transformers
+fastapi
+flask
+flask-cors
+python-dotenv
+pydantic
+tenacity
+pytest
