@@ -13,3 +13,4 @@ chroma_db/
 *.sqlite3
 .vscode/
 .idea/
+*.ipynb
