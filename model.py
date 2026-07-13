@@ -90,8 +90,7 @@ Claim to route:
             logger.log("Max retries reached after API failures, using fallback", level="error")
             return FALLBACK_RESULT
 
-
-if __name__ == "__main__":
-    test_res = load_and_route("my Car was rear-ended and my neck hurts lil bit")
-    print("-" * 30)
-    print(test_res)
+# if __name__ == "__main__":
+#     test_res = load_and_route("my Car was rear-ended and my neck hurts lil bit")
+#     print("-" * 30)
+#     print(test_res)

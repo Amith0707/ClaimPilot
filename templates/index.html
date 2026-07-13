@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClaimBot — Claim Intake</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="mark">CB</span>
+    ClaimBot
+  </div>
+  <span class="tag">Auto insurance claim triage</span>
+</header>
+
+<main>
+  <div class="intro">
+    <h1>Submit a claim for routing</h1>
+    <p>Paste the customer's claim description below. ClaimBot will determine the category, priority, and the team it should be assigned to.</p>
+  </div>
+
+  <form method="POST">
+    <label for="claim_text">Claim description</label>
+    <textarea
+      id="claim_text"
+      name="claim_text"
+      placeholder="e.g. My car was rear-ended at a signal. Passenger has minor neck pain. Police report attached."
+    >{{ claim_text }}</textarea>
+    <div class="form-footer">
+      <span class="hint">No personal or account information is stored.</span>
+      <button type="submit">Route claim</button>
+    </div>
+  </form>
+
+  {% if result %}
+  <div class="result">
+    <div class="result-header">
+      <h2>Routing result</h2>
+      {% if elapsed_ms %}
+      <span class="elapsed">{{ elapsed_ms }}ms</span>
+      {% endif %}
+    </div>
+    <div class="result-body">
+      <div class="field-grid">
+        <div class="field">
+          <div class="k">Category</div>
+          <div class="v">{{ result.category }}</div>
+        </div>
+        <div class="field">
+          <div class="k">Priority</div>
+          <div class="v"><span class="badge {{ result.priority }}">{{ result.priority }}</span></div>
+        </div>
+        <div class="field">
+          <div class="k">Assigned team</div>
+          <div class="v">{{ result.assigned_team }}</div>
+        </div>
+        <div class="field">
+          <div class="k">Confidence</div>
+          <div class="v">{{ result.confidence }}</div>
+        </div>
+      </div>
+      <div class="reasoning">
+        <div class="k">Reasoning</div>
+        <p>{{ result.reasoning }}</p>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    Submit a claim above to see its routing decision.
+  </div>
+  {% endif %}
+</main>
+
+</body>
+</html>
