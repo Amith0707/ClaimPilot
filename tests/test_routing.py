@@ -41,8 +41,8 @@ expected_results = {
         "assigned_team": "Manual Review Team",
     },
     "help": {
-        "category": "Insufficient Information",
-        "assigned_team": "Manual Review Team",
+        "category": "Out of Scope",
+        "assigned_team": "Automated Response",
     },
     "...": {
         "category": "Insufficient Information",
@@ -104,16 +104,16 @@ expected_results = {
         "assigned_team": "Injury Specialists",
     },
     "What's the weather like today?": {
-        "category": "Insufficient Information",
-        "assigned_team": "Manual Review Team",
+        "category": "Out of Scope",
+        "assigned_team": "Automated Response",
     },
     "12345": {
         "category": "Insufficient Information",
         "assigned_team": "Manual Review Team",
     },# blank input 
     "": {
-        "category": "Insufficient Information",
-        "assigned_team": "Manual Review Team",
+        "category": "Out of Scope",
+        "assigned_team": "Automated Response",
     },
 }
 

@@ -11,16 +11,8 @@ RULE 4 — Personal Injury (priority)
 Personal Injury claims are priority High by default. Only downgrade to Medium if the injury is explicitly described as resolved, minor, and not requiring ongoing treatment. If the claim describes severe, critical, life-threatening, unconscious, not breathing, fatal, death, or passed away language, priority remains High and the reasoning field must explicitly flag it as top-severity requiring immediate emergency-level human follow-up, ambulance dispatch, or escalation beyond standard claims processing.
 
 RULE 5 — Litigation trigger (legal language)
-A claim is categorized as Litigation and routed to Legal Team with priority High
-only when the legal language indicates active or adversarial legal action against
-the insurer — such as "I'm suing," "my lawyer is filing a suit," "we are pursuing
-legal action," or "I've retained an attorney to take action against you." Incidental
-mentions of legal counsel — such as a lawyer merely advising the claimant on how to
-report or document a claim ("my lawyer said I should report this") — do NOT trigger
-Litigation on their own. In such incidental cases, categorize based on the
-substantive content of the claim (injury, damage, etc.) per the normal precedence
-rules, and note the incidental legal mention in the reasoning field without it
-driving the category.
+A claim is categorized as Litigation and routed to Legal Team with priority High only when the legal language indicates active or adversarial legal action against the insurer — such as "I'm suing," "my lawyer is filing a suit," "we are pursuing legal action," or "I've retained an attorney to take action against you." Incidental mentions of legal counsel — such as a lawyer merely advising the claimant on how to report or document a claim ("my lawyer said I should report this") — do NOT trigger Litigation on their own. In such incidental cases, categorize based on the
+substantive content of the claim (injury, damage, etc.) per the normal precedence rules, and note the incidental legal mention in the reasoning field without it driving the category.
 
 RULE 6 — Fraud Review (mismatch signal)
 Claims where the described severity contradicts other stated details (e.g., "minor damage" paired with a very high repair estimate, or inconsistent incident timelines) MUST be categorized as Fraud Review, routed to Fraud Investigation Unit, priority High — NOT Property Damage, even when the repair estimate alone would otherwise trigger Rule 2's cost escalation. A mismatch between described severity and financial/documentary evidence is a stronger signal than cost alone.
@@ -55,5 +47,5 @@ Anger, frustration, or emotional language alone — without any accompanying men
 RULE 14 — Missing required documentation
 If a claim references injury or significant damage but does not mention any supporting documentation (police report, medical record, photos), note this in the reasoning field as a flag for manual follow-up, without downgrading confidence unless the description itself is too vague to categorize.
 
-RULE 15  — Off-topic / non-claim input
-Messages unrelated to an insurance claim, accident, policy question, or claim status — such as general conversation, unrelated questions, greetings, or test input with no insurance-relevant content — should be categorized as Insufficient Information, routed to Manual Review Team, priority Low, confidence Low, with reasoning noting the message appears unrelated to an insurance claim.
+RULE 15 — Off-topic / non-claim input
+Messages unrelated to an insurance claim, accident, policy question, or claim status — such as general conversation, unrelated questions, greetings, or test input with no insurance-relevant content — should be categorized as "Out of Scope", NOT "Insufficient Information". Route to "Automated Response", NOT "Manual Review Team", since these messages do not require human claims-handling attention and should not consume reviewer time. Priority Low, confidence Low, with reasoning noting the message appears unrelated to an insurance claim.
