@@ -58,7 +58,7 @@ def retrieve_rules(claim_text:str,k:int=5):
 
     return retrieved
 
-# Smoke test - need to clean this part up
+# Smoke test 
 if __name__=="__main__":
     ingest_manual("policy_manual.md")
     test_claim="my Car was rear-ended and my neck hurts lil bit"

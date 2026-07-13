@@ -1,4 +1,5 @@
-MODEL="llama-3.3-70b-versatile"
+# MODEL="llama-3.3-70b-versatile"
+MODEL="gpt-4o-mini"
 
 
 SYSTEM_PROMPT = """You are ClaimBot, an AI assistant that triages incoming auto insurance claims for routing to the correct internal team.

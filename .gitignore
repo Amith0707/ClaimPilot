@@ -14,3 +14,4 @@ chroma_db/
 .vscode/
 .idea/
 *.ipynb
+logs/

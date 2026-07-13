@@ -3,6 +3,7 @@ import json
 from typing import Literal
 from dotenv import load_dotenv
 from groq import Groq
+from openai import OpenAI
 from pydantic import BaseModel,ValidationError
 from utils.logger import logger
 from chunker import retrieve_rules
@@ -27,10 +28,11 @@ class ClaimRouting(BaseModel):
     confidence:Literal["High", "Medium", "Low"]
 
 
-def load_and_route(claim_text:str,k:int=5):
+def load_and_route(claim_text:str,k:int=8):
     """Need to place docs here [IMP]"""
 
-    client=Groq(api_key=os.getenv("GROQ_API_KEY"))
+    # client=Groq(api_key=os.getenv("GROQ_API_KEY"))
+    client=OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     retrieved=retrieve_rules(claim_text=claim_text,k=k)
     logger.log("Retrived relevant user chunks and loaded the model successfully")
 
@@ -45,7 +47,8 @@ def load_and_route(claim_text:str,k:int=5):
             {'role':'user','content':user_message}
         ],
         tools=[ROUTE_CLAIM_TOOL],
-        tool_choice={"type": "function", "function": {"name": "route_claim"}} # Need to understand this
+        tool_choice={"type": "function", "function": {"name": "route_claim"}}, # Need to understand this
+        temperature=0.1
     )
     tool_call=response.choices[0].message.tool_calls[0]
     raw_result = json.loads(tool_call.function.arguments)
@@ -61,9 +64,9 @@ def load_and_route(claim_text:str,k:int=5):
         logger.log(f"Schema validation failed: {e}", level="error")
         raise
 
-# Smoke test
+# # Smoke test
 # if __name__=="__main__":
-#     test_res=load_and_route("  ")
+#     test_res=load_and_route(" ")
 #     print("-"*30)
 #     print(test_res)
     
