@@ -18,62 +18,349 @@
 
 <main>
   <div class="intro">
-    <h1>Submit a claim for routing</h1>
-    <p>Paste the customer's claim description below. ClaimBot will determine the category, priority, and the team it should be assigned to.</p>
+    <h1>Manual vs. AI routing comparison</h1>
+    <p>Paste a claim below, manually decide its routing, then let ClaimBot route the same claim — compare time and accuracy side by side.</p>
   </div>
 
-  <form method="POST">
+  <details class="reference">
+    <summary>Reference: categories &amp; teams</summary>
+    <div class="reference-body">
+      <div class="ref-col">
+        <div class="ref-title">Categories</div>
+        <ul>
+          <li>Property Damage</li>
+          <li>Personal Injury</li>
+          <li>Fraud Review</li>
+          <li>Litigation</li>
+          <li>Claim Status Inquiry</li>
+          <li>General Inquiry</li>
+          <li>Insufficient Information</li>
+          <li>Out of Scope</li>
+        </ul>
+      </div>
+      <div class="ref-col">
+        <div class="ref-title">Teams</div>
+        <ul>
+          <li>Auto Claims Team</li>
+          <li>Injury Specialists</li>
+          <li>Fraud Investigation Unit</li>
+          <li>Legal Team</li>
+          <li>Customer Support Team</li>
+          <li>Manual Review Team</li>
+          <li>Automated Response</li>
+        </ul>
+      </div>
+    </div>
+  </details>
+
+  <div class="card">
+      <div class="ticket-picker-header">
+        <span class="k">Demo tickets — <span id="selected-count">0</span> of {{ tickets|length }} selected</span>
+        <div class="ticket-actions">
+          <label class="select-all-label">
+            <input type="checkbox" id="select-all-check">
+            Select all
+          </label>
+          <button id="run-selected-btn" type="button" disabled>Run selected (0)</button>
+        </div>
+      </div>
+      <div class="ticket-list" id="ticket-list">
+        {% for ticket in tickets %}
+        <label class="ticket-item">
+          <input type="checkbox" class="ticket-check" data-index="{{ loop.index0 }}" data-text="{{ ticket }}">
+          <span class="ticket-text">{{ loop.index }}. {{ ticket }}</span>
+          <button type="button" class="ticket-load" data-text="{{ ticket }}">Load single</button>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+  <!-- Batch results table -->
+  <div class="card" id="batch-results" style="display:none;">
+    <div class="k" style="margin-bottom:14px;">Batch results</div>
+    <table class="batch-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Claim</th>
+          <th>Category</th>
+          <th>Priority</th>
+          <th>Team</th>
+          <th>Time</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="batch-tbody"></tbody>
+    </table>
+    <div class="batch-summary" id="batch-summary"></div>
+  </div>
+
+  <div class="card">
     <label for="claim_text">Claim description</label>
     <textarea
       id="claim_text"
-      name="claim_text"
       placeholder="e.g. My car was rear-ended at a signal. Passenger has minor neck pain. Police report attached."
-    >{{ claim_text }}</textarea>
+    ></textarea>
+
     <div class="form-footer">
       <span class="hint">No personal or account information is stored.</span>
-      <button type="submit">Route claim</button>
+      <button id="start-btn" type="button">Start manual routing</button>
     </div>
-  </form>
+  </div>
 
-  {% if result %}
-  <div class="result">
-    <div class="result-header">
-      <h2>Routing result</h2>
-      {% if elapsed_ms %}
-      <span class="elapsed">{{ elapsed_ms }}ms</span>
-      {% endif %}
+  <!-- Manual decision panel, hidden until timer starts -->
+  <div class="card" id="manual-panel" style="display:none;">
+    <div class="manual-header">
+      <span class="k">Manual routing — decide as you read</span>
+      <span class="timer" id="timer">0.0s</span>
     </div>
-    <div class="result-body">
-      <div class="field-grid">
-        <div class="field">
-          <div class="k">Category</div>
-          <div class="v">{{ result.category }}</div>
-        </div>
-        <div class="field">
-          <div class="k">Priority</div>
-          <div class="v"><span class="badge {{ result.priority }}">{{ result.priority }}</span></div>
-        </div>
-        <div class="field">
-          <div class="k">Assigned team</div>
-          <div class="v">{{ result.assigned_team }}</div>
-        </div>
-        <div class="field">
-          <div class="k">Confidence</div>
-          <div class="v">{{ result.confidence }}</div>
-        </div>
+
+    <div class="manual-grid">
+      <div>
+        <label for="manual-category">Category</label>
+        <select id="manual-category">
+          <option>Property Damage</option>
+          <option>Personal Injury</option>
+          <option>Fraud Review</option>
+          <option>Litigation</option>
+          <option>Claim Status Inquiry</option>
+          <option>General Inquiry</option>
+          <option>Insufficient Information</option>
+          <option>Out of Scope</option>
+        </select>
       </div>
+      <div>
+        <label for="manual-priority">Priority</label>
+        <select id="manual-priority">
+          <option>High</option>
+          <option>Medium</option>
+          <option>Low</option>
+        </select>
+      </div>
+      <div>
+        <label for="manual-team">Assigned team</label>
+        <select id="manual-team">
+          <option>Auto Claims Team</option>
+          <option>Injury Specialists</option>
+          <option>Fraud Investigation Unit</option>
+          <option>Legal Team</option>
+          <option>Customer Support Team</option>
+          <option>Manual Review Team</option>
+          <option>Automated Response</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-footer">
+      <span class="hint">Click once you've decided — this stops the clock.</span>
+      <button id="lock-btn" type="button">Lock in decision</button>
+    </div>
+  </div>
+
+  <!-- AI trigger, appears after manual decision is locked -->
+  <div class="card" id="ai-trigger" style="display:none;">
+    <div class="form-footer" style="justify-content:flex-end;">
+      <button id="ai-btn" type="button">Route with ClaimBot AI</button>
+    </div>
+  </div>
+
+  <!-- Comparison result -->
+  <div class="comparison" id="comparison" style="display:none;">
+
+    <div class="compare-col">
+      <div class="compare-label">Manual</div>
+      <div class="compare-time" id="manual-time-display">—</div>
+      <div class="field"><div class="k">Category</div><div class="v" id="manual-cat-out"></div></div>
+      <div class="field"><div class="k">Priority</div><div class="v" id="manual-pri-out"></div></div>
+      <div class="field"><div class="k">Assigned team</div><div class="v" id="manual-team-out"></div></div>
+    </div>
+
+    <div class="compare-col ai">
+      <div class="compare-label">ClaimBot AI</div>
+      <div class="compare-time" id="ai-time-display">—</div>
+      <div class="field"><div class="k">Category</div><div class="v" id="ai-cat-out"></div></div>
+      <div class="field"><div class="k">Priority</div><div class="v" id="ai-pri-out"></div></div>
+      <div class="field"><div class="k">Assigned team</div><div class="v" id="ai-team-out"></div></div>
       <div class="reasoning">
         <div class="k">Reasoning</div>
-        <p>{{ result.reasoning }}</p>
+        <p id="ai-reasoning-out"></p>
       </div>
     </div>
+
   </div>
-  {% else %}
-  <div class="empty-state">
-    Submit a claim above to see its routing decision.
-  </div>
-  {% endif %}
+
+  <div class="speedup" id="speedup" style="display:none;"></div>
+
 </main>
+
+<script>
+  let startTime = null;
+  let timerInterval = null;
+  let manualElapsedSeconds = null;
+
+  const startBtn = document.getElementById("start-btn");
+  const lockBtn = document.getElementById("lock-btn");
+  const aiBtn = document.getElementById("ai-btn");
+  const timerEl = document.getElementById("timer");
+  const manualPanel = document.getElementById("manual-panel");
+  const aiTrigger = document.getElementById("ai-trigger");
+  const comparison = document.getElementById("comparison");
+  const speedupEl = document.getElementById("speedup");
+  const claimText = document.getElementById("claim_text");
+
+  startBtn.addEventListener("click", () => {
+    if (!claimText.value.trim()) {
+      alert("Paste a claim description first.");
+      return;
+    }
+    startTime = performance.now();
+    manualPanel.style.display = "block";
+    startBtn.disabled = true;
+    claimText.disabled = true;
+
+    timerInterval = setInterval(() => {
+      const elapsed = (performance.now() - startTime) / 1000;
+      timerEl.textContent = elapsed.toFixed(1) + "s";
+    }, 100);
+  });
+
+  lockBtn.addEventListener("click", () => {
+    clearInterval(timerInterval);
+    manualElapsedSeconds = (performance.now() - startTime) / 1000;
+    timerEl.textContent = manualElapsedSeconds.toFixed(1) + "s (locked)";
+    lockBtn.disabled = true;
+    document.getElementById("manual-category").disabled = true;
+    document.getElementById("manual-priority").disabled = true;
+    document.getElementById("manual-team").disabled = true;
+    aiTrigger.style.display = "block";
+  });
+
+  aiBtn.addEventListener("click", async () => {
+    aiBtn.disabled = true;
+    aiBtn.textContent = "Routing...";
+
+    const res = await fetch("/api/route", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ claim_text: claimText.value })
+    });
+    const aiResult = await res.json();
+
+    // Populate manual side
+    document.getElementById("manual-time-display").textContent = manualElapsedSeconds.toFixed(1) + "s";
+    document.getElementById("manual-cat-out").textContent = document.getElementById("manual-category").value;
+    document.getElementById("manual-pri-out").textContent = document.getElementById("manual-priority").value;
+    document.getElementById("manual-team-out").textContent = document.getElementById("manual-team").value;
+
+    // Populate AI side
+    document.getElementById("ai-time-display").textContent = (aiResult.elapsed_ms / 1000).toFixed(1) + "s";
+    document.getElementById("ai-cat-out").textContent = aiResult.category;
+    document.getElementById("ai-pri-out").textContent = aiResult.priority;
+    document.getElementById("ai-team-out").textContent = aiResult.assigned_team;
+    document.getElementById("ai-reasoning-out").textContent = aiResult.reasoning;
+
+    comparison.style.display = "grid";
+
+    const speedup = (manualElapsedSeconds * 1000 / aiResult.elapsed_ms).toFixed(1);
+    speedupEl.textContent = `ClaimBot AI was ${speedup}x faster on this claim`;
+    speedupEl.style.display = "block";
+
+    aiTrigger.style.display = "none";
+  });
+
+  // ---- Demo ticket picker + batch runner ----
+
+  // Load a single demo ticket into the textarea
+  document.querySelectorAll(".ticket-load").forEach(btn => {
+    btn.addEventListener("click", () => {
+      claimText.value = btn.dataset.text;
+      claimText.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
+
+  // Selection tracking
+  const ticketChecks = document.querySelectorAll(".ticket-check");
+  const selectAllCheck = document.getElementById("select-all-check");
+  const selectedCountEl = document.getElementById("selected-count");
+  const runSelectedBtn = document.getElementById("run-selected-btn");
+
+  function updateSelectionUI() {
+    const checkedCount = document.querySelectorAll(".ticket-check:checked").length;
+    selectedCountEl.textContent = checkedCount;
+    runSelectedBtn.textContent = `Run selected (${checkedCount})`;
+    runSelectedBtn.disabled = checkedCount === 0;
+    selectAllCheck.checked = checkedCount === ticketChecks.length;
+    selectAllCheck.indeterminate = checkedCount > 0 && checkedCount < ticketChecks.length;
+  }
+
+  ticketChecks.forEach(cb => cb.addEventListener("change", updateSelectionUI));
+
+  selectAllCheck.addEventListener("change", () => {
+    ticketChecks.forEach(cb => cb.checked = selectAllCheck.checked);
+    updateSelectionUI();
+  });
+
+  // Run only the selected tickets
+  const batchResults = document.getElementById("batch-results");
+  const batchTbody = document.getElementById("batch-tbody");
+  const batchSummary = document.getElementById("batch-summary");
+
+  runSelectedBtn.addEventListener("click", async () => {
+    const checked = Array.from(document.querySelectorAll(".ticket-check:checked"))
+      .map(cb => parseInt(cb.dataset.index));
+
+    if (checked.length === 0) return;
+
+    runSelectedBtn.disabled = true;
+    const originalText = runSelectedBtn.textContent;
+    runSelectedBtn.textContent = "Running...";
+    batchTbody.innerHTML = "";
+    batchResults.style.display = "block";
+    batchResults.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    const res = await fetch("/api/route-batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ indices: checked })
+    });
+    const results = await res.json();
+
+    let successCount = 0;
+    let totalTime = 0;
+
+    results.forEach((r, i) => {
+      const row = document.createElement("tr");
+      if (r.error) {
+        row.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${r.claim_text}</td>
+          <td colspan="4" class="batch-error">Error: ${r.error}</td>
+          <td>${r.elapsed_ms}ms</td>
+        `;
+      } else {
+        successCount++;
+        totalTime += r.elapsed_ms;
+        const statusClass = r.category === "System Error" ? "batch-warning" : "batch-ok";
+        const statusLabel = r.category === "System Error" ? "FALLBACK" : "OK";
+        row.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${r.claim_text}</td>
+          <td>${r.category}</td>
+          <td><span class="badge ${r.priority}">${r.priority}</span></td>
+          <td>${r.assigned_team}</td>
+          <td>${r.elapsed_ms}ms</td>
+          <td class="${statusClass}">${statusLabel}</td>
+        `;
+      }
+      batchTbody.appendChild(row);
+    });
+
+    batchSummary.textContent = `${successCount}/${results.length} succeeded — total time ${(totalTime / 1000).toFixed(1)}s, avg ${Math.round(totalTime / results.length)}ms/claim`;
+
+    runSelectedBtn.disabled = false;
+    runSelectedBtn.textContent = originalText;
+  });
+</script>
 
 </body>
 </html>
