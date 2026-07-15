@@ -1,4 +1,5 @@
 groq
+openai
 chromadb
 sentence-transformers
 fastapi

@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: claimbot
+      POSTGRES_USER: claimbot_user
+      POSTGRES_PASSWORD: claimbot_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U claimbot_user -d claimbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: claimbot
+      DB_USER: claimbot_user
+      DB_PASSWORD: claimbot_pass
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./chroma_db:/app/chroma_db
+
+volumes:
+  postgres_data:

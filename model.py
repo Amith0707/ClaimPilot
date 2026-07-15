@@ -15,6 +15,32 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 class ClaimRouting(BaseModel):
+    """Schema for a validated claim routing decision.
+
+    Enforces that every routed claim conforms to a fixed set of categories,
+    priorities, and teams before it is trusted or persisted. Used to validate
+    the raw JSON returned by the LLM's tool call in :func:`load_and_route`.
+
+    Attributes
+    ----------
+    category : str
+        The claim category. One of: "Property Damage", "Personal Injury",
+        "Fraud Review", "Litigation", "Claim Status Inquiry", "General Inquiry",
+        "Insufficient Information", "Out of Scope", "System Error".
+    priority : str
+        Urgency level. One of: "High", "Medium", "Low".
+    assigned_team : str
+        The internal team the claim is routed to. One of: "Auto Claims Team",
+        "Injury Specialists", "Fraud Investigation Unit", "Legal Team",
+        "Customer Support Team", "Manual Review Team", "Automated Response",
+        "Engineering / Retry Queue".
+    reasoning : str
+        A one-sentence explanation of the routing decision, citing the
+        relevant policy rule where applicable.
+    confidence : str
+        Model's confidence in the decision. One of: "High", "Medium", "Low".
+    """
+
     category: Literal[
         "Property Damage", "Personal Injury", "Fraud Review",
         "Litigation", "Claim Status Inquiry", "General Inquiry",
@@ -41,8 +67,55 @@ FALLBACK_RESULT = {
 
 
 def load_and_route(claim_text: str, k: int = 8, max_retries: int = 2):
-    """Routes an insurance claim to the correct category/team using RAG + LLM tool-calling.
-    Retries on failure; falls back to a safe System Error result if all retries fail."""
+    """Route an insurance claim to the correct category, priority, and team.
+
+        Retrieves the most relevant policy rules for the given claim via RAG
+        (:func:`chunker.retrieve_rules`), constructs a prompt combining those
+        rules with the claim text, and calls the LLM with a schema-enforced
+        tool call to produce a structured routing decision. The result is
+        validated against :class:`ClaimRouting` before being returned.
+
+        On failure whether an LLM API error (rate limit, timeout, connection
+        error) or a schema validation failure the call is retried up to
+        ``max_retries`` times with exponential backoff. If all retries fail,
+        a safe default (:data:`FALLBACK_RESULT`) is returned instead of raising,
+        so the caller never receives an unhandled exception.
+
+        Parameters
+        ----------
+        claim_text : str
+            The raw claim description to route, as submitted by a customer or
+            loaded from a demo ticket.
+        k : int, optional
+            Number of policy rule chunks to retrieve from the vector store for
+            context (default is 8). At the current policy manual size (~15
+            rules), a high k reduces the risk of relevant rules being missed
+            by similarity ranking.
+        max_retries : int, optional
+            Maximum number of retry attempts after the first failed call
+            (default is 2, giving 3 total attempts).
+
+        Returns
+        -------
+        dict
+            A dictionary with keys ``category``, ``priority``, ``assigned_team``,
+            ``reasoning``, and ``confidence``, matching :class:`ClaimRouting`.
+            Returns :data:`FALLBACK_RESULT` if all attempts fail.
+
+        Notes
+        -----
+        If the environment variable ``SIMULATE_DISCONNECT`` is set to ``"true"``,
+        this function raises a :class:`ConnectionError` on every attempt,
+        regardless of the real API's availability. This is a debug hook used to
+        demonstrate graceful failure handling without requiring an actual network
+        disconnect.
+
+        Examples
+        --------
+        >>> result = load_and_route("My car was rear-ended and my neck hurts")
+        >>> result["category"]
+        'Personal Injury'
+        """
 
     retrieved = retrieve_rules(claim_text=claim_text, k=k)
     logger.log("Retrieved relevant policy chunks successfully")
