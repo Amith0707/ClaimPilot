@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClaimBot — History</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="mark">CB</span>
+    ClaimBot
+  </div>
+  <span class="tag">Auto insurance claim triage</span>
+</header>
+
+<main>
+  <div class="intro">
+    <h1>Claim history</h1>
+    <p>All claims routed so far, stored in Postgres. Showing the most recent {{ claims|length }}.</p>
+  </div>
+
+  <div class="card">
+    {% if claims %}
+    <table class="batch-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Claim</th>
+          <th>Category</th>
+          <th>Priority</th>
+          <th>Team</th>
+          <th>Confidence</th>
+          <th>Time</th>
+          <th>Source</th>
+          <th>When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for claim in claims %}
+        <tr>
+          <td>{{ claim.id }}</td>
+          <td>{{ claim.claim_text }}</td>
+          <td>{{ claim.category }}</td>
+          <td><span class="badge {{ claim.priority }}">{{ claim.priority }}</span></td>
+          <td>{{ claim.assigned_team }}</td>
+          <td>{{ claim.confidence }}</td>
+          <td>{{ claim.elapsed_ms }}ms</td>
+          <td>{{ claim.source }}</td>
+          <td>{{ claim.created_at.strftime('%b %d, %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">No claims routed yet.</div>
+    {% endif %}
+  </div>
+
+  <div style="margin-top:16px;">
+    <a href="/" style="color:var(--accent); font-size:13px; font-weight:600; text-decoration:none;">← Back to routing</a>
+  </div>
+</main>
+
+</body>
+</html>

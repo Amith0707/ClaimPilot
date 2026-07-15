@@ -8,3 +8,4 @@ python-dotenv
 pydantic
 tenacity
 pytest
+psycopg2-binary

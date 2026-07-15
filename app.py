@@ -1,15 +1,16 @@
 import time
 from flask import Flask, render_template, request, jsonify
 from model import load_and_route
-
+from db import init_db,save_claim,get_all_claims
 app = Flask(__name__)
+init_db()
 
 DEMO_TICKETS = [
     "broken",
     "help",
     "...",
     "THIS IS RIDICULOUS!!! MY CAR HAS BEEN SITTING FOR WEEKS AND NO ONE IS HELPING ME!!!",
-    "I am SO ANGRY right now, this whole company is a joke",
+    "I am SO ANGRY right now, this whole insurance company is a joke",
     "Another car hit mine and I think I hurt my back a little",
     "My lawyer said I should report that I hurt my shoulder in the crash",
     "Minor scratch on my bumper, repair estimate is 8 lakh rupees",
@@ -40,6 +41,8 @@ def api_route():
     result = load_and_route(claim_text)
     elapsed_ms = round((time.time() - start) * 1000)
     result["elapsed_ms"] = elapsed_ms
+    save_claim(claim_text, result, elapsed_ms, source="single")
+    print("Saved to DB successfully")
 
     return jsonify(result)
 
@@ -61,6 +64,7 @@ def api_route_batch():
             result["elapsed_ms"] = elapsed_ms
             result["claim_text"] = claim_text
             result["error"] = None
+            save_claim(claim_text, result, elapsed_ms, source="batch")
         except Exception as e:
             result = {
                 "claim_text": claim_text,
@@ -70,6 +74,11 @@ def api_route_batch():
         results.append(result)
 
     return jsonify(results)
+
+@app.route("/history")
+def history():
+    claims = get_all_claims(limit=50)
+    return render_template("history.html", claims=claims)
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

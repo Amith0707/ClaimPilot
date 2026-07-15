@@ -57,6 +57,9 @@ Claim to route:
 
     for attempt in range(max_retries + 1):
         try:
+            if os.getenv("SIMULATE_DISCONNECT") == "true":
+                raise ConnectionError("Simulated network disconnect for demo purposes")
+            
             response = client.chat.completions.create(
                 model=MODEL,
                 messages=[
