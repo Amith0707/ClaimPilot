@@ -5,6 +5,27 @@ description, ClaimBot determines the category, priority, assigned team, and
 a cited reasoning — using a RAG pipeline (policy manual retrieval +
 schema-enforced LLM tool-calling) rather than a black-box classifier.
 
+All routing logic lives in a single function, `load_and_route()`, in
+`model.py`. The Flask app, the pytest suite, and the batch UI runner are all
+thin callers of that one function — none of them re-implement retrieval,
+prompt construction, or validation independently.
+
+## Table of contents
+
+- [What it does](#what-it-does)
+- [Deliverables](#deliverables)
+- [Quick start (Docker — recommended)](#quick-start-docker--recommended)
+- [Quick start (without Docker)](#quick-start-without-docker)
+- [Running tests](#running-tests)
+- [Architecture](#architecture)
+  - [Why RAG, and why this scale](#why-rag-and-why-this-scale)
+  - [Model choice and a mid-sprint provider swap](#model-choice-and-a-mid-sprint-provider-swap)
+- [Reliability and failure handling](#reliability-and-failure-handling)
+- [Team and category design](#team-and-category-design)
+- [Known limitations](#known-limitations)
+- [Project structure](#project-structure)
+- [Engineering process and debugging log](#engineering-process-and-debugging-log)
+
 ## What it does
 
 A customer submits a claim description in plain language. ClaimBot:
@@ -21,6 +42,16 @@ Output is always one of a fixed set of categories/teams/priorities — never
 free-form text — enforced at two layers (LLM tool schema + Pydantic
 validation), with automatic retry and graceful fallback on failure.
 
+## Deliverables
+
+| # | Deliverable | Status |
+|---|---|---|
+| 1 | Prompts that consistently return valid structured JSON | Done — tool-use schema + Pydantic validation, see `tests/test_routing.py` |
+| 2 | Handle 3 edge cases (angry tone, very short, ambiguous) | Done — dedicated tests `test_m4s3`–`test_m4s5` in `test_routing.py` |
+| 3 | A simple interface to test it | Done — Flask web UI: single-claim comparison, batch ticket runner, claim history view |
+| 4 | Before/after: manual vs. AI routing time | Done — live timer in UI on every routed claim; manual time measured by timing real manual triage against the same claims |
+| 5 | Demo 20 sample tickets | Done — 20-ticket picker built into the UI, runnable individually or as a batch |
+
 ## Quick start (Docker — recommended)
 
 ### Prerequisites
@@ -32,14 +63,12 @@ validation), with automatic retry and graceful fallback on failure.
 ```bash
 git clone <repo-url>
 cd ClaimPilot
-cp .env.example .env
 ```
 
-Open `.env` and paste in your own OpenAI API key:
+Create a `.env` file in the project root with your OpenAI API key:
 
-```bash
 OPENAI_API_KEY=your_openai_api_key_here
-```
+
 
 Ingest the policy manual into ChromaDB (one-time, before first run):
 
@@ -75,7 +104,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Create `.env` and set the following variables:
+Create a `.env` file in the project root with the following variables:
 
 OPENAI_API_KEY=your_openai_api_key_here
 
@@ -118,51 +147,58 @@ messages, ambiguous claims, and priority defensibility.
 ## Architecture
 
 ```
-                          Claim text
-                              |
-                              v
-                        Embed claim
-                              |
-                              v
-                ChromaDB similarity search
-                              |
-                              v
-                  Top-k relevant rules
-                              |
-                              v
-          Prompt = system prompt + rules + claim
-                              |
-                              v
-            LLM call (schema-enforced tool use)
-                              |
-                              v
-              Pydantic validation of output
-                       |            |
-                   valid          invalid / API failure
-                       |            |
-                       v            v
-                Return result   Retry (up to 2x, backoff)
-                       |            |
-                       |            v (all retries fail)
-                       |     Safe fallback:
-                       |     "System Error" /
-                       |     "Engineering / Retry Queue"
-                       |            |
-                       v------------+
-          Persist to Postgres + display in UI
+                      Claim text
+                          |
+                          v
+                    Embed claim
+                          |
+                          v
+            ChromaDB similarity search
+                          |
+                          v
+              Top-k relevant rules
+                          |
+                          v
+      Prompt = system prompt + rules + claim
+                          |
+                          v
+        LLM call (schema-enforced tool use)
+                          |
+                          v
+          Pydantic validation of output
+                   |            |
+               valid          invalid / API failure
+                   |                |
+                   v                v
+            Return result    Retry (up to 2x, backoff)
+                   |                |
+                   |                v (all retries fail)
+                   |          Safe fallback:
+                   |          "System Error" /
+                   |          "Engineering / Retry Queue"
+                   |                |
+                   +--------+-------+
+                            |
+                            v
+              Persist to Postgres + display in UI
 ```
 
 ### Why RAG, and why this scale
 
-At roughly 15 policy rules, any vector database performs comparably — the
+At roughly 15 policy rules, any vector database performs comparably the
 choice of ChromaDB specifically was about zero-infrastructure local setup,
 not retrieval performance at scale. Retrieval-augmented generation was
 chosen over pure prompt-based few-shot examples so the policy manual can be
 edited and re-ingested independently of the prompt/code, and so reasoning
 can cite specific rules rather than relying purely on the model's own
 judgment. Testing during development showed most routing failures traced
-back to rule-wording ambiguity, not retrieval quality — a tested finding,
+back to rule-wording ambiguity, not retrieval quality a tested finding,
 not an assumption.
+
+Retrieval depth (`k=8`) was chosen empirically, not assumed — testing at
+k=3 and k=5 against the full test suite reproduced specific, real failures
+(a claim losing its priority escalation, another falling through to
+Insufficient Information entirely) that k=8 does not exhibit.
 
 ### Model choice and a mid-sprint provider swap
 
@@ -232,8 +268,8 @@ messages a human could not act on any better than the model.
   is not fully deterministic even at low temperature.
 
 All of the above were identified through deliberate adversarial and
-real-use-case stress-testing (see `documentation.md`), not left
-undiscovered.
+real-use-case stress-testing, documented in full below.
+
 
 ## Project structure
 
@@ -257,8 +293,15 @@ ClaimPilot/
 └── requirements.txt
 ```
 
-## Further reading
+## Engineering process and debugging log
 
-See `documentation.md` for the full debugging and experiment log — every
-test failure found, root-caused, and fixed during development, including
-adversarial stress-testing results.
+This project's routing logic was hardened through five distinct testing
+phases: baseline correctness testing, a design-level fix to prevent wasted
+human-review time, boundary-tightening after live testing, deliberate
+adversarial stress-testing (which surfaced a real false-fraud-accusation
+bug before it could reach a demo), and validation against unfiltered,
+realistic customer language. Every failure found was root-caused before
+being fixed — not patched by trial and error.
+
+The full log every test failure, its root cause, the fix applied, and
+the re-test result is in `documentation.md`.

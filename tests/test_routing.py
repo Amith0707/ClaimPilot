@@ -40,7 +40,7 @@ def test_claim_routing_returns_valid_json(claim):
     assert not missing, f"Missing fields: {missing}"
 
 expected_results = {
-    # Zero-reference messages -> Insufficient Information / Automated Response
+    # Zero-reference messages Insufficient Information / Automated Response
     "broken": {
         "assigned_team": "Automated Response",
     },
@@ -125,7 +125,7 @@ expected_results = {
         "assigned_team": "Fraud Investigation Unit",
     },
     "The other driver and I settled privately in cash but now my policy renewal shows an open claim against me and the garage is billing my insurer for repairs I already paid for myself": {
-    # Genuinely ambiguous by design — model has landed on Fraud Review, Litigation,
+    # Genuinely ambiguous by design model has landed on Fraud Review, Litigation,
     # or Insufficient Information across iterations, all defensible reads. What
     # matters is a substantive, non-trivial category with real reasoning, not a
     # crash or a forced default.

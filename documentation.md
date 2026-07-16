@@ -7,6 +7,26 @@ root-caused, and how it was fixed, across three escalating rounds of testing:
 baseline correctness testing, targeted rule-boundary tightening, and
 adversarial/real-use-case stress-testing.
 
+## Table of contents
+
+- [Phase 1 — Baseline correctness testing](#phase-1--baseline-correctness-testing)
+
+- [Phase 2 — Design-level finding: Manual Review Team receiving non-claim messages](#phase-2--design-level-finding-manual-review-team-receiving-non-claim-messages)
+
+- [Phase 3 — Boundary tightening after further live testing](#phase-3--boundary-tightening-after-further-live-testing)
+
+- [Phase 4 — Adversarial stress-testing](#phase-4--adversarial-stress-testing)
+
+- [Phase 5 — Real-use-case validation](#phase-5--real-use-case-validation)
+
+- [Phase 6 — Retrieval depth (k) validation](#phase-6--retrieval-depth-k-validation)
+
+- [Cross-cutting: provider swap during testing](#cross-cutting-provider-swap-during-testing)
+
+- [Summary of all fixes](#summary-of-all-fixes)
+
+- [Known limitations (documented, not fixed in v1)](#known-limitations-documented-not-fixed-in-v1)
+
 ---
 
 ## Phase 1 — Baseline correctness testing
@@ -335,6 +355,51 @@ surfaced genuine, minor scope gaps rather than bugs:
 
 Both are logged as scoped v2 considerations rather than v1 defects — the
 core routing logic generalized well to authentic, unfiltered input.
+
+---
+
+## Phase 6 — Retrieval depth (k) validation
+
+Once the rule set stabilized at 55/55 passing tests, the retrieval depth
+(`k=8`) itself was tested directly rather than left as an assumed default,
+to confirm it wasn't simply carried over from earlier debugging without
+being re-justified against the final, consolidated rule set.
+
+**Method:** the full test suite was re-run with `k` temporarily lowered to
+3 and to 5, with no other code or rule changes, then restored to 8.
+
+**Result:**
+
+| k | Result | Failure(s) |
+|---|---|---|
+| 3 | 53/55 passed | "MY CAR HAS BEEN SITTING FOR WEEKS" downgraded to Medium priority (Rule 8 retrieved, but without enough of its threshold detail); a multi-signal legal/injury/fraud claim fell through to Insufficient Information entirely |
+| 5 | 53/55 passed | The same "SITTING FOR WEEKS" claim fell through to Insufficient Information completely — a *worse* failure than at k=3, not a better one |
+| 8 | 55/55 passed | None |
+
+**Why k=5 failed worse than k=3 on the same claim:** counterintuitively,
+failures did not scale monotonically with k. At k=5, whatever rules were
+retrieved for the "SITTING FOR WEEKS" claim apparently crowded out Rule 8
+entirely — likely Rule 13 (angry tone) or Rule 15 (off-topic) ranking
+competitively enough to displace it at that window size. At k=3, Rule 8
+was retrieved but without its full threshold-detail context, which was
+enough to be applied at all, just applied conservatively. This indicates
+that the specific rules included in the retrieved set matter as much as
+how many are included — a small increase in k doesn't guarantee smooth
+improvement.
+
+**Token cost check:** at k=8, each call includes roughly 1,400 tokens of
+rule context, out of a 128,000-token context window — under 1.5% of
+capacity. Combined with GPT-4o-mini's per-token pricing, this represents a
+negligible cost difference from k=3 or k=5 at the project's current scale
+(~15 rules). The token savings from a lower k were not judged worth the
+demonstrated correctness risk.
+
+**Conclusion:** `k=8` is not an arbitrary or historically-inherited value —
+it is the minimum tested depth with zero known failures against the full
+test suite, and the token cost difference versus smaller values is
+negligible at this policy manual size. If the manual grows substantially
+larger, this tradeoff would need to be re-evaluated, since token cost
+scales with corpus size in a way it does not at the current scale.
 
 ---
 
