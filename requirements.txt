@@ -1,8 +1,6 @@
-groq
 openai
 chromadb
 sentence-transformers
-fastapi
 flask
 flask-cors
 python-dotenv
